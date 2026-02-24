@@ -1,0 +1,38 @@
+name: 'Setup gocache-s3'
+description: 'Configure Go build caching backed by S3 using GOCACHEPROG'
+branding:
+  icon: 'hard-drive'
+  color: 'orange'
+
+inputs:
+  bucket:
+    description: 'S3 bucket name'
+    required: true
+  prefix:
+    description: 'S3 key prefix within the bucket'
+    required: false
+    default: ''
+  path-style:
+    description: 'Use path-style S3 addressing (required for MinIO, LocalStack, etc.)'
+    required: false
+    default: 'false'
+  version:
+    description: 'Version of gocache-s3 to install (tag, branch, or commit SHA)'
+    required: false
+    default: 'latest'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install gocache-s3
+      shell: bash
+      run: go install github.com/mnafees/gocache-s3@${{ inputs.version }}
+
+    - name: Configure GOCACHEPROG environment
+      shell: bash
+      run: |
+        GOPATH=$(go env GOPATH)
+        echo "GOCACHE_S3_BUCKET=${{ inputs.bucket }}" >> "$GITHUB_ENV"
+        echo "GOCACHE_S3_PREFIX=${{ inputs.prefix }}" >> "$GITHUB_ENV"
+        echo "GOCACHE_S3_PATH_STYLE=${{ inputs.path-style }}" >> "$GITHUB_ENV"
+        echo "GOCACHEPROG=${GOPATH}/bin/gocache-s3" >> "$GITHUB_ENV"

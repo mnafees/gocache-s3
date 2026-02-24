@@ -102,6 +102,55 @@ export GOCACHE_S3_BUCKET=build-cache
 export GOCACHEPROG=gocache-s3
 ```
 
+## GitHub Action
+
+This repo doubles as a GitHub Action. Add it to any workflow after `actions/setup-go` and `aws-actions/configure-aws-credentials`:
+
+```yaml
+name: Build
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache: false  # replaced by gocache-s3
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/my-role
+          aws-region: us-east-1
+
+      - uses: mnafees/gocache-s3@main
+        with:
+          bucket: my-build-cache
+          prefix: myproject
+
+      - run: go build ./...
+      - run: go test ./...
+```
+
+Disable the built-in Go action cache (`cache: false`) since `gocache-s3` replaces it entirely.
+
+### Action inputs
+
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `bucket` | yes | | S3 bucket name |
+| `prefix` | no | `''` | Key prefix within the bucket |
+| `path-style` | no | `'false'` | Use path-style addressing |
+| `version` | no | `'latest'` | Version to install (tag, branch, or SHA) |
+
+AWS credentials must be configured before the action runs. Any method works: `configure-aws-credentials` with OIDC, repository secrets, or self-hosted runner IAM roles.
+
 ## How it works
 
 The Go toolchain spawns `gocache-s3` as a subprocess and communicates over stdin/stdout using line-delimited JSON. Three operations are supported:
